@@ -1,9 +1,7 @@
 name: Auto SignIn (manual)
 
 on:
-  workflow_dispatch:   # 手动触发
-  # schedule:
-  #   - cron: '15 8 * * *'   # 想每天自动跑再取消注释（UTC 时间）
+  workflow_dispatch:  # 有这个就能在页面点“Run workflow”立刻运行
 
 jobs:
   run:
@@ -22,31 +20,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # 用 Secret 写入 configure/cookie.json（不要把 cookie 写进仓库）
       - name: Write configs (data.json & cookie.json) from secret
         env:
           MY_COOKIE: ${{ secrets.MY_COOKIE }}
         run: |
           mkdir -p configure
           python - <<'PY'
-import os, json, pathlib
-c = os.environ.get("MY_COOKIE", "").strip()
-cfg = {
-    "users": [
-        {
+      import os, json, pathlib
+      c = os.environ.get("MY_COOKIE", "").strip()
+      cfg = {
+        "users": [
+          {
             "username": "",
             "password": "",
             "cookie": c,
             "cookies": c,
-            "login": "cookie"
-        }
-    ]
-}
-p = pathlib.Path("configure")
-(p / "data.json").write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
-(p / "cookie.json").write_text(json.dumps({"cookie": c}, ensure_ascii=False), encoding="utf-8")
-print("config files written")
-PY
-
+            "login": "cookie"   # 只是提示字段，脚本忽略也不影响
+          }
+        ]
+      }
+      p = pathlib.Path("configure")
+      (p / "data.json").write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+      (p / "cookie.json").write_text(json.dumps({"cookie": c}, ensure_ascii=False), encoding="utf-8")
+      print("config files written")
+      PY
       - name: Run service
         working-directory: ./src
         run: python service.py
