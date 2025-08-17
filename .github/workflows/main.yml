@@ -42,27 +42,27 @@ jobs:
           
           # 使用 Python 来安全地替换，避免特殊字符问题
           python3 << 'EOF'
-import os
-import re
-
-# 读取环境变量
-cookie_value = os.environ.get('MY_COOKIE', '')
-api_key_value = os.environ.get('API_KEY', '')
-
-# 读取 mini.py 文件
-with open('src/mini.py', 'r', encoding='utf-8') as f:
-    content = f.read()
-
-# 替换 cookie 和 api key
-content = re.sub(r'cookie = """XXXXXXX"""', f'cookie = """{cookie_value}"""', content)
-content = re.sub(r'TwoCaptcha_apikey = "xxxxxxxxxx"', f'TwoCaptcha_apikey = "{api_key_value}"', content)
-
-# 写回文件
-with open('src/mini.py', 'w', encoding='utf-8') as f:
-    f.write(content)
-
-print("mini.py updated successfully")
-EOF
+          import os
+          import re
+          
+          # 读取环境变量
+          cookie_value = os.environ.get('MY_COOKIE', '')
+          api_key_value = os.environ.get('API_KEY', '')
+          
+          # 读取 mini.py 文件
+          with open('src/mini.py', 'r', encoding='utf-8') as f:
+              content = f.read()
+          
+          # 替换 cookie 和 api key
+          content = re.sub(r'cookie = """XXXXXXX"""', f'cookie = """{cookie_value}"""', content)
+          content = re.sub(r'TwoCaptcha_apikey = "xxxxxxxxxx"', f'TwoCaptcha_apikey = "{api_key_value}"', content)
+          
+          # 写回文件
+          with open('src/mini.py', 'w', encoding='utf-8') as f:
+              f.write(content)
+          
+          print("mini.py updated successfully")
+          EOF
           
       - name: Debug mini.py content
         run: |
