@@ -19,72 +19,60 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      # 创建兼容的配置文件（同时支持 cookie 和 data.json）
-      - name: Write compatible config from cookie
+      # 使用 Mini 版本，直接修改代码中的 cookie
+      - name: Update mini.py with cookie
         env:
           MY_COOKIE: ${{ secrets.MY_COOKIE }}
+          API_KEY: ${{ secrets.API_KEY }}
         run: |
-          mkdir -p configure
-          python3 << 'EOF'
-          import os
-          import json
-          import pathlib
+          # 备份原文件
+          cp src/mini.py src/mini.py.bak
           
           # 获取环境变量
-          cookie_value = os.environ.get('MY_COOKIE', '').strip()
+          COOKIE_VALUE="${MY_COOKIE:-}"
+          API_KEY_VALUE="${API_KEY:-}"
           
-          print(f"Cookie value length: {len(cookie_value)}")
+          echo "Cookie length: ${#COOKIE_VALUE}"
+          echo "API Key length: ${#API_KEY_VALUE}"
           
-          if not cookie_value:
-              print("ERROR: MY_COOKIE is empty!")
-              exit(1)
+          if [ -z "$COOKIE_VALUE" ]; then
+            echo "ERROR: MY_COOKIE is empty!"
+            exit 1
+          fi
           
-          # 确保目录存在
-          config_dir = pathlib.Path('configure')
-          config_dir.mkdir(exist_ok=True)
+          # 使用 Python 来安全地替换，避免特殊字符问题
+          python3 << 'EOF'
+import os
+import re
+
+# 读取环境变量
+cookie_value = os.environ.get('MY_COOKIE', '')
+api_key_value = os.environ.get('API_KEY', '')
+
+# 读取 mini.py 文件
+with open('src/mini.py', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# 替换 cookie 和 api key
+content = re.sub(r'cookie = """XXXXXXX"""', f'cookie = """{cookie_value}"""', content)
+content = re.sub(r'TwoCaptcha_apikey = "xxxxxxxxxx"', f'TwoCaptcha_apikey = "{api_key_value}"', content)
+
+# 写回文件
+with open('src/mini.py', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("mini.py updated successfully")
+EOF
           
-          # 创建 cookie.json（新方式）
-          cookie_config = {
-              "cookie": cookie_value,
-              "api_key": ""  # 先留空，如果需要验证码服务再填写
-          }
-          
-          cookie_file = config_dir / 'cookie.json'
-          with open(cookie_file, 'w', encoding='utf-8') as f:
-              json.dump(cookie_config, f, ensure_ascii=False, indent=2)
-          
-          # 创建 data.json（老方式，避免程序报错）
-          data_config = {
-              "users": [
-                  {
-                      "username": "",
-                      "password": "", 
-                      "cookie": cookie_value,
-                      "cookies": cookie_value,
-                      "login": "cookie",
-                      "api_key": ""
-                  }
-              ]
-          }
-          
-          data_file = config_dir / 'data.json'
-          with open(data_file, 'w', encoding='utf-8') as f:
-              json.dump(data_config, f, ensure_ascii=False, indent=2)
-          
-          print("Config files written successfully")
-          print(f"cookie.json content: {json.dumps(cookie_config, indent=2)}")
-          print(f"data.json content: {json.dumps(data_config, indent=2)}")
-          EOF
-          
-      - name: Debug config files
+      - name: Debug mini.py content
         run: |
-          echo "=== Checking config files ==="
-          ls -la configure/
-          echo "=== cookie.json content ==="
-          cat configure/cookie.json
-          echo "=== data.json content ==="
-          cat configure/data.json
+          echo "=== Checking if mini.py exists ==="
+          ls -la src/
+          echo "=== First few lines of mini.py ==="
+          head -10 src/mini.py
+          echo "=== Checking cookie replacement ==="
+          grep -n "cookie.*XXXXXXX\|TwoCaptcha_apikey" src/mini.py || echo "Cookie/API key lines not found"
           
-      - name: Run service
+      - name: Run mini version
         working-directory: ./src
-        run: python service.py
+        run: python mini.py
