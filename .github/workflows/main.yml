@@ -1,7 +1,7 @@
 name: Auto SignIn (manual)
 
 on:
-  workflow_dispatch:  # 有这个按钮就能“Run workflow”立即测试
+  workflow_dispatch:  # 有这个就能在页面点“Run workflow”立刻运行
 
 jobs:
   run:
@@ -20,20 +20,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 用 Secret 写入 configure/cookie.json（不把 cookie 提交到仓库）
+      # 用 Secret 写入 configure/cookie.json（不要把 cookie 写进仓库）
       - name: Write cookie.json from secret
         env:
           MY_COOKIE: ${{ secrets.MY_COOKIE }}
         run: |
           mkdir -p configure
-          python - <<'PY'
-import os, json, pathlib
-cookie = os.environ.get("MY_COOKIE","").strip()
-pathlib.Path("configure").mkdir(exist_ok=True)
-with open("configure/cookie.json","w",encoding="utf-8") as f:
-    json.dump({"cookie": cookie}, f, ensure_ascii=False)
-print("cookie.json written")
-PY
+          python -c 'import os,json,sys; open("configure/cookie.json","w",encoding="utf-8").write(json.dumps({"cookie": os.environ.get("MY_COOKIE","").strip()}, ensure_ascii=False))'
+          echo "cookie.json written"
 
       - name: Run service
         working-directory: ./src
