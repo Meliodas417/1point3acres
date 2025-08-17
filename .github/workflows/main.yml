@@ -19,8 +19,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      # 用 Secret 写入 configure/cookie.json（不要把 cookie 写进仓库）
-      - name: Write configs (data.json & cookie.json) from secret
+      # 尝试只用 Cookie 的配置
+      - name: Write cookie-only config from secret
         env:
           MY_COOKIE: ${{ secrets.MY_COOKIE }}
         run: |
@@ -32,48 +32,38 @@ jobs:
           
           # 获取环境变量
           cookie_value = os.environ.get('MY_COOKIE', '').strip()
+          
           print(f"Cookie value length: {len(cookie_value)}")
           
-          # 创建配置
-          cfg = {
-              "users": [
-                  {
-                      "username": "",
-                      "password": "",
-                      "cookie": cookie_value,
-                      "cookies": cookie_value,
-                      "login": "cookie"
-                  }
-              ]
+          if not cookie_value:
+              print("ERROR: MY_COOKIE is empty!")
+              exit(1)
+          
+          # 创建只有 cookie 的配置
+          cookie_config = {
+              "cookie": cookie_value
           }
           
           # 确保目录存在
           config_dir = pathlib.Path('configure')
           config_dir.mkdir(exist_ok=True)
           
-          # 写入配置文件
-          data_file = config_dir / 'data.json'
+          # 写入 cookie.json 配置文件
           cookie_file = config_dir / 'cookie.json'
-          
-          with open(data_file, 'w', encoding='utf-8') as f:
-              json.dump(cfg, f, ensure_ascii=False, indent=2)
-          
           with open(cookie_file, 'w', encoding='utf-8') as f:
-              json.dump({"cookie": cookie_value}, f, ensure_ascii=False, indent=2)
+              json.dump(cookie_config, f, ensure_ascii=False, indent=2)
           
-          print("Config files written successfully")
-          print(f"data.json content: {json.dumps(cfg, indent=2)}")
+          print("Cookie-only config file written successfully")
+          print(f"cookie.json content: {json.dumps(cookie_config, indent=2)}")
           EOF
           
       - name: Debug config files
         run: |
           echo "=== Checking config files ==="
           ls -la configure/
-          echo "=== data.json content ==="
-          cat configure/data.json
           echo "=== cookie.json content ==="
           cat configure/cookie.json
           
-      - name: Run service
+      - name: Run service (cookie-only attempt)
         working-directory: ./src
         run: python service.py
