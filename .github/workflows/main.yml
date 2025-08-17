@@ -25,25 +25,54 @@ jobs:
           MY_COOKIE: ${{ secrets.MY_COOKIE }}
         run: |
           mkdir -p configure
-          python -c "
-          import os, json, pathlib
-          c = os.environ.get('MY_COOKIE', '').strip()
+          python3 << 'EOF'
+          import os
+          import json
+          import pathlib
+          
+          # 获取环境变量
+          cookie_value = os.environ.get('MY_COOKIE', '').strip()
+          print(f"Cookie value length: {len(cookie_value)}")
+          
+          # 创建配置
           cfg = {
-              'users': [
+              "users": [
                   {
-                      'username': '',
-                      'password': '',
-                      'cookie': c,
-                      'cookies': c,
-                      'login': 'cookie'  # 只是提示字段，脚本忽略也不影响
+                      "username": "",
+                      "password": "",
+                      "cookie": cookie_value,
+                      "cookies": cookie_value,
+                      "login": "cookie"
                   }
               ]
           }
-          p = pathlib.Path('configure')
-          (p / 'data.json').write_text(json.dumps(cfg, ensure_ascii=False), encoding='utf-8')
-          (p / 'cookie.json').write_text(json.dumps({'cookie': c}, ensure_ascii=False), encoding='utf-8')
-          print('config files written')
-          "
+          
+          # 确保目录存在
+          config_dir = pathlib.Path('configure')
+          config_dir.mkdir(exist_ok=True)
+          
+          # 写入配置文件
+          data_file = config_dir / 'data.json'
+          cookie_file = config_dir / 'cookie.json'
+          
+          with open(data_file, 'w', encoding='utf-8') as f:
+              json.dump(cfg, f, ensure_ascii=False, indent=2)
+          
+          with open(cookie_file, 'w', encoding='utf-8') as f:
+              json.dump({"cookie": cookie_value}, f, ensure_ascii=False, indent=2)
+          
+          print("Config files written successfully")
+          print(f"data.json content: {json.dumps(cfg, indent=2)}")
+          EOF
+          
+      - name: Debug config files
+        run: |
+          echo "=== Checking config files ==="
+          ls -la configure/
+          echo "=== data.json content ==="
+          cat configure/data.json
+          echo "=== cookie.json content ==="
+          cat configure/cookie.json
           
       - name: Run service
         working-directory: ./src
