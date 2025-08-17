@@ -19,8 +19,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      # 尝试只用 Cookie 的配置
-      - name: Write cookie-only config from secret
+      # 创建兼容的配置文件（同时支持 cookie 和 data.json）
+      - name: Write compatible config from cookie
         env:
           MY_COOKIE: ${{ secrets.MY_COOKIE }}
         run: |
@@ -39,22 +39,41 @@ jobs:
               print("ERROR: MY_COOKIE is empty!")
               exit(1)
           
-          # 创建只有 cookie 的配置
-          cookie_config = {
-              "cookie": cookie_value
-          }
-          
           # 确保目录存在
           config_dir = pathlib.Path('configure')
           config_dir.mkdir(exist_ok=True)
           
-          # 写入 cookie.json 配置文件
+          # 创建 cookie.json（新方式）
+          cookie_config = {
+              "cookie": cookie_value,
+              "api_key": ""  # 先留空，如果需要验证码服务再填写
+          }
+          
           cookie_file = config_dir / 'cookie.json'
           with open(cookie_file, 'w', encoding='utf-8') as f:
               json.dump(cookie_config, f, ensure_ascii=False, indent=2)
           
-          print("Cookie-only config file written successfully")
+          # 创建 data.json（老方式，避免程序报错）
+          data_config = {
+              "users": [
+                  {
+                      "username": "",
+                      "password": "", 
+                      "cookie": cookie_value,
+                      "cookies": cookie_value,
+                      "login": "cookie",
+                      "api_key": ""
+                  }
+              ]
+          }
+          
+          data_file = config_dir / 'data.json'
+          with open(data_file, 'w', encoding='utf-8') as f:
+              json.dump(data_config, f, ensure_ascii=False, indent=2)
+          
+          print("Config files written successfully")
           print(f"cookie.json content: {json.dumps(cookie_config, indent=2)}")
+          print(f"data.json content: {json.dumps(data_config, indent=2)}")
           EOF
           
       - name: Debug config files
@@ -63,7 +82,9 @@ jobs:
           ls -la configure/
           echo "=== cookie.json content ==="
           cat configure/cookie.json
+          echo "=== data.json content ==="
+          cat configure/data.json
           
-      - name: Run service (cookie-only attempt)
+      - name: Run service
         working-directory: ./src
         run: python service.py
